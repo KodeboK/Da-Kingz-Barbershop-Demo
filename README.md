@@ -1,1 +1,3 @@
-# Da-Kingz-Barbershop-Demo
+# Da Kingz Barbershop
+
+Website demonstration. All rights reserved.

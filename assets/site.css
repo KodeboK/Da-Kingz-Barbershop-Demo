@@ -445,3 +445,10 @@ html[data-page="preview"].has-temporary-banner{--preview-offset:30px}
 .review-invite[open]::backdrop{animation:review-invite-fade .45s ease-out both}
 @keyframes review-invite-fade{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){.review-invite[open],.review-invite[open]::backdrop{animation:none}}
+
+/* Continue the hero backdrop behind the original floating header. */
+@media(max-width:700px){
+ .hero-inner{padding-top:84px}
+ .hero.grain::before,.hero .hero-halo{mask-image:linear-gradient(to bottom,transparent 0 84px,#000 130px)}
+ .hero-photo{inset:0;width:100%;height:100%}
+}

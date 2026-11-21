@@ -1,4 +1,4 @@
-import { setupExperience } from "./experience.js?v=15";
+import { setupExperience } from "./experience.js?v=17";
 import { setupBanner } from "./banner.js";
 import { setupDockEffects } from "./dock-effects.js";
 import { setupBookingPreview } from "./booking.js?v=10";

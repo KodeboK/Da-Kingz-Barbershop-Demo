@@ -401,7 +401,7 @@ html[data-page="preview"].has-temporary-banner{--preview-offset:30px}
 .reviews{position:relative}.reviews>div:first-child{position:relative}.review-bubble{position:absolute;left:0;bottom:calc(100% + 14px);z-index:8;width:min(260px,80vw);padding:15px 38px 15px 18px;border-radius:22px;border:1px solid var(--line);background:var(--glass);color:var(--ink);backdrop-filter:blur(18px);box-shadow:0 10px 30px #0003;animation:review-bubble-in .3s ease both}.review-bubble::after{content:"";position:absolute;bottom:-6px;left:28px;width:12px;height:12px;transform:rotate(45deg);background:var(--paper);border-bottom:1px solid var(--line);border-right:1px solid var(--line)}.review-bubble p{margin:0 0 5px;font-size:.85rem}.review-bubble a{font-size:.9rem;font-weight:700;color:var(--accent)}.bubble-dismiss{position:absolute;right:7px;top:7px;width:28px;height:28px;display:grid;place-items:center;background:none;border:0;color:var(--muted);border-radius:50%}.bubble-dismiss svg{width:14px;height:14px}.review-bubble[hidden]{display:none}@keyframes review-bubble-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:700px){.head-shell{flex-wrap:nowrap}.head-actions{gap:4px}.head-shell>.schedule{margin-right:3px}.language-switch{width:74px;min-width:74px;height:36px;min-height:36px}.language-switch span{font-size:.7rem}.review-invite,.review-capsule{border-radius:38px}.review-capsule{padding:46px 20px 12px}.review-capsule h2{margin:0;font-size:1.05rem}.review-art{height:64px;margin:12px 0 10px}.dock{width:min(420px,calc(100% - 18px));height:70px;padding:3px 7px;grid-template-columns:1fr 1fr 1.18fr 1fr 1fr}.dock>a:not(.dock-home),.dock .dock-book{font-size:.65rem;min-height:54px;gap:4px}.dock>a svg,.dock .dock-book svg{width:1.3rem;height:1.3rem}.dock .dock-home{width:76px;height:76px;transform:translateY(-19px);border:1px solid #d58b9d;box-shadow:0 0 0 4px #a55b6b1a,0 7px 22px #140e1699}.dock-home .lens{width:68px;height:68px}.dock-home .lens img{width:57px;height:auto}.site-footer{padding-bottom:calc(116px + var(--safe))}.scroll-top{bottom:calc(111px + var(--safe))}}
 @media(prefers-reduced-motion:reduce){.language-switch::before{transition:none}.review-bubble{animation:none}}
-@media(max-width:700px){.head-shell{flex-wrap:wrap}}
+@media(max-width:700px){.head-shell{flex-wrap:nowrap}}
 
 .hero-contact-actions{display:inline-flex;align-items:center;gap:10px;flex-wrap:nowrap}
 
@@ -421,3 +421,27 @@ html[data-page="preview"].has-temporary-banner{--preview-offset:30px}
 @media(max-width:350px){.hero .actions .button{font-size:.72rem;padding-inline:7px;gap:4px}}
 
 .legal h2{font-family:var(--body);font-size:1.25rem;line-height:1.4;letter-spacing:0;margin-top:1.8rem}.legal p{overflow-wrap:anywhere}
+
+/* Keep the brand, hours and controls together in either language. */
+@media(max-width:700px){
+ .head-shell{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content;gap:6px;flex-wrap:nowrap}
+ .head-shell>.schedule{min-width:0;margin:0;justify-self:center;font-size:.7rem}
+ .head-shell>.schedule summary{gap:0;white-space:nowrap}
+ .head-hours-text{line-height:1.25;white-space:nowrap;padding-left:10px}
+ .head-actions{margin:0;flex:none;gap:4px;white-space:nowrap}
+ .head-actions .language-switch{width:66px;min-width:66px}
+ .head-actions .theme{min-height:36px}
+}
+@media(max-width:360px){
+ .head-shell{gap:4px;padding-left:7px}
+ .head-shell .wordmark{gap:4px}.head-shell .wordmark strong{font-size:.9rem}
+ .head-shell .brand-mark{width:25px;height:25px}
+ .head-actions .language-switch{width:58px;min-width:58px}
+}
+/* A warm rim and rose glass distinguish the booking action. */
+.dock .dock-book{border:1px solid #e6bd7b99;border-radius:22px;background:linear-gradient(155deg,#bc697a99,#752f46cc);color:#fff4df;box-shadow:inset 0 1px 0 #ffe9bd66,0 3px 12px #6d283e40;transition:background-color .2s ease,box-shadow .2s ease}
+.dock .dock-book:hover,.dock .dock-book:focus-visible{background-color:#a24863;box-shadow:inset 0 1px 0 #ffe9bd88,0 0 0 3px #e6bd7b26}
+.review-invite[open]{animation:review-invite-fade .45s ease-out both}
+.review-invite[open]::backdrop{animation:review-invite-fade .45s ease-out both}
+@keyframes review-invite-fade{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.review-invite[open],.review-invite[open]::backdrop{animation:none}}

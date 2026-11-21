@@ -9,7 +9,21 @@ const es={
 'Book an appointment':'Reserva una cita','Schedule preview · Sample times only':'Vista previa · Horarios de ejemplo','Barber':'Barbero','Barber #1':'Barbero #1','Barber #2':'Barbero #2','Barber #3':'Barbero #3','Service':'Servicio','Appointment platform':'Plataforma de citas','Google Calendar':'Google Calendar','Calendly':'Calendly','Google Calendar appointment preview. Times below are examples.':'Vista previa de Google Calendar. Los horarios son ejemplos.','Calendly-managed appointment preview. Times below are examples; no appointment is submitted.':'Vista previa de citas con Calendly. Los horarios son ejemplos; no se reserva ninguna cita.','Choose a date':'Elige una fecha','Eastern Time':'Hora del Este','Online booking is coming soon. Call the shop to make an appointment.':'Las reservas en línea estarán disponibles pronto. Llama para reservar.','Call to book':'Llamar para reservar','Let us know your experience by leaving us a review':'Cuéntanos tu experiencia dejando una reseña','Leave a review':'Dejar una reseña','Maybe later':'Quizás después','DAYS':'DÍAS','HOURS':'HORAS','MINUTES':'MINUTOS','SECONDS':'SEGUNDOS','Close booking':'Cerrar reservas','Close gallery':'Cerrar galería','Close review invitation':'Cerrar invitación de reseña','Previous month':'Mes anterior','Next month':'Mes siguiente','Return to top':'Volver al inicio','Skip to content':'Saltar al contenido','Switch to light theme':'Cambiar a tema claro','Switch to dark theme':'Cambiar a tema oscuro',
 };
 export function setupExperience(){
- let language='en';try{language=localStorage.getItem('kingz-language')==='es'?'es':'en'}catch{}
+ let language=document.documentElement.dataset.languageRoute || (/\/es\/?$/.test(location.pathname)?'es':'en');
+ const routeBase=document.querySelector('base');
+ const siteRoot=(routeBase?.getAttribute('href')||'/').replace(/es\/?$/,'');
+ function syncLanguageRoute(){
+  const path=siteRoot+(language==='es'?'es/':'');
+  const url=new URL(path,location.origin);url.search=location.search;url.hash=location.hash;
+  if(location.pathname!==url.pathname)history.replaceState(null,'',url);
+  routeBase?.setAttribute('href',path);
+  document.documentElement.dataset.languageRoute=language;
+  const canonical=document.querySelector('link[rel="canonical"]');
+  if(canonical)canonical.setAttribute('href',url.origin+url.pathname);
+  document.title=language==='es'?'Da Kingz Barbershop | Cortes y degradados en Nyack, NY':'Da Kingz Barbershop | Haircuts & Fades in Nyack, NY';
+  try{localStorage.setItem('kingz-language',language)}catch{}
+ }
+ syncLanguageRoute();
  const originals=new WeakMap(), originalsAttr=new WeakMap();
  const inverse=Object.fromEntries(Object.entries(es).map(([a,b])=>[b,a]));
  let queued=false;
@@ -34,7 +48,7 @@ export function setupExperience(){
    originalsAttr.set(el,record);
   });
  }
- document.querySelector('[data-language-toggle]')?.addEventListener('click',()=>{language=language==='en'?'es':'en';try{localStorage.setItem('kingz-language',language)}catch{};translate();document.dispatchEvent(new Event('kingz-language'))});
+ document.querySelector('[data-language-toggle]')?.addEventListener('click',()=>{language=language==='en'?'es':'en';syncLanguageRoute();translate();document.dispatchEvent(new Event('kingz-language'))});
  const observer=new MutationObserver(()=>{if(!queued){queued=true;queueMicrotask(()=>{queued=false;translate()})}});
  observer.observe(document.body,{childList:true,subtree:true,characterData:true});translate();
  const dialog=document.querySelector('#review-invite');

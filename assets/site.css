@@ -1,6 +1,6 @@
-@font-face{font-family:Barlow Condensed;src:url(/assets/barlow-800.woff2) format("woff2");font-weight:800;font-display:swap}
-@font-face{font-family:Barlow Condensed;src:url(/assets/barlow-700.woff2) format("woff2");font-weight:700;font-display:swap}
-@font-face{font-family:Inter;src:url(/assets/inter.woff2) format("woff2");font-weight:400 700;font-display:swap}
+@font-face{font-family:Barlow Condensed;src:url(/Da-Kingz-Barbershop-Demo/assets/barlow-800.woff2) format("woff2");font-weight:800;font-display:swap}
+@font-face{font-family:Barlow Condensed;src:url(/Da-Kingz-Barbershop-Demo/assets/barlow-700.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:Inter;src:url(/Da-Kingz-Barbershop-Demo/assets/inter.woff2) format("woff2");font-weight:400 700;font-display:swap}
 :root{color-scheme:dark;--bg:#101114;--paper:#171619;--panel:#222125;--line:#383237;--ink:#f5efe9;--muted:#bbb0ac;--accent:#ec737b;--red:#a12b38;--red-hover:#b83746;--red-ink:#fff7f3;--glass:rgba(24,21,24,.9);--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Inter,system-ui,sans-serif;--safe:env(safe-area-inset-bottom,0px)}
 :root[data-theme="light"]{color-scheme:light;--bg:#f6f2ec;--paper:#eee7e0;--panel:#e4dcd4;--line:#cbbfb7;--ink:#29292d;--muted:#554c4e;--accent:#87343e;--red:#8c2e3c;--red-hover:#752330;--red-ink:#fff7f3;--glass:rgba(246,242,236,.92)}
 *,*::before,*::after{box-sizing:border-box}
@@ -26,7 +26,7 @@ h1 em,h2 em{font-style:normal;color:var(--accent)}
 .skip:focus{transform:none}
 .eyebrow{font-weight:700;font-size:.71rem;letter-spacing:.2em;line-height:1.5;display:flex;align-items:center;gap:.8rem;color:var(--muted);margin-bottom:1.2rem}
 .eyebrow-line{width:25px;height:1px;background:var(--accent);display:inline-block}
-.grain::before{content:"";position:absolute;inset:0;background:url(/assets/grain.png);opacity:.35;pointer-events:none}
+.grain::before{content:"";position:absolute;inset:0;background:url(/Da-Kingz-Barbershop-Demo/assets/grain.png);opacity:.35;pointer-events:none}
 .button,.text-link{display:inline-flex;align-items:center;justify-content:center;gap:.68em;font-size:.81rem;font-weight:700;line-height:1.22}
 .button{padding:.88rem 1.18rem;min-height:47px;border:1px solid transparent;border-radius:4px;white-space:nowrap}
 .button.primary{background:var(--red);color:var(--red-ink);border-color:var(--red)}

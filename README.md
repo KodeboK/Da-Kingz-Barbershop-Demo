@@ -1,3 +1,3 @@
 # Da Kingz Barbershop
 
-Website demonstration. All rights reserved.
+Visitor demonstration. Booking submissions are disabled. All rights reserved, subject to third-party licenses.

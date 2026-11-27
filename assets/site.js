@@ -1,15 +1,17 @@
-import { setupExperience } from "./experience.js?v=19";
+import { setupExperience } from "./experience.js?v=20";
 import { setupBanner } from "./banner.js";
 import { setupDockEffects } from "./dock-effects.js";
-import { setupBookingPreview } from "./booking.js?v=10";
+import { setupSeamlessBooking } from "./seamless-booking.js?v=20";
 import { hoursStatus, hoursTone } from "./shop-hours.js";
 
 (() => {
   const one = (selector, parent = document) => parent.querySelector(selector);
   const all = (selector, parent = document) => [...parent.querySelectorAll(selector)];
   const root = document.documentElement;
+  if("serviceWorker" in navigator&&root.dataset.page!=="preview")navigator.serviceWorker.register(new URL("service-worker.js",new URL((document.querySelector("base")?.getAttribute("href")||"/").replace(/es\/?$/,""),location.origin).href)).catch(()=>{});
   setupBanner();
   setupExperience();
+  if(document.documentElement.dataset.page!=="demo")fetch('/api/visit?lang='+document.documentElement.lang,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).catch(()=>{});
   const noMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const network = navigator.connection;
   const motion = !noMotion.matches && !network?.saveData && !/^(slow-2g|2g)$/.test(network?.effectiveType || "") && (navigator.hardwareConcurrency || 4) > 2;
@@ -147,7 +149,7 @@ import { hoursStatus, hoursTone } from "./shop-hours.js";
   requestFrame();
 
   const book = one("#book-dialog"), lightbox = one("#photo-dialog");
-  setupBookingPreview(book);
+  setupSeamlessBooking(book);
   let activeDialog = null, opener = null;
   function show(dialog, from) {
     if (!dialog?.showModal || activeDialog) return false;
@@ -257,6 +259,7 @@ import { hoursStatus, hoursTone } from "./shop-hours.js";
     if (!action) return;
     if (action.dataset.event === "booking_link") dismissBookingNudge();
     if (action.hasAttribute("data-book")) {
+      document.dispatchEvent(new CustomEvent("kingz-service-booking",{detail:action.closest("[data-service]")?.dataset.service||null}));
       track("booking_prompt");
       if (show(book, action === nudge ? one(".dock-book") : action)) event.preventDefault();
     } else if (action.dataset.event) {

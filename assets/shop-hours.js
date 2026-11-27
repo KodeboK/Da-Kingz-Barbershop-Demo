@@ -50,3 +50,9 @@ export function hoursStatus(content, now = new Date()) {
 export function hoursTone(label) {
   return { "Open until": "open", "Closing soon at": "closing", "Opens at": "closed" }[label] || "neutral";
 }
+
+export function easternMidnight(date){
+ const desired=Date.parse(date+'T00:00:00Z');if(!Number.isFinite(desired))throw Error('Invalid date.');let instant=desired;
+ for(let i=0;i<3;i++){const parts=Object.fromEntries(easternTime.formatToParts(new Date(instant)).map(p=>[p.type,p.value]));const shown=Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day),Number(parts.hour),Number(parts.minute));const offset=shown-desired;if(!offset)break;instant-=offset}
+ return instant/1000;
+}

@@ -1,7 +1,7 @@
-import { setupExperience } from "./experience.js?v=20";
+import { setupExperience } from "./experience.js?v=22";
 import { setupBanner } from "./banner.js";
 import { setupDockEffects } from "./dock-effects.js";
-import { setupSeamlessBooking } from "./seamless-booking.js?v=20";
+import { setupSeamlessBooking } from "./seamless-booking.js?v=22";
 import { hoursStatus, hoursTone } from "./shop-hours.js";
 
 (() => {
@@ -11,7 +11,7 @@ import { hoursStatus, hoursTone } from "./shop-hours.js";
   if("serviceWorker" in navigator&&root.dataset.page!=="preview")navigator.serviceWorker.register(new URL("service-worker.js",new URL((document.querySelector("base")?.getAttribute("href")||"/").replace(/es\/?$/,""),location.origin).href)).catch(()=>{});
   setupBanner();
   setupExperience();
-  if(document.documentElement.dataset.page!=="demo")fetch('/api/visit?lang='+document.documentElement.lang,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).catch(()=>{});
+  if(!document.documentElement.dataset.bookingOrigin)fetch('/api/visit?lang='+document.documentElement.lang,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).catch(()=>{});
   const noMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const network = navigator.connection;
   const motion = !noMotion.matches && !network?.saveData && !/^(slow-2g|2g)$/.test(network?.effectiveType || "") && (navigator.hardwareConcurrency || 4) > 2;

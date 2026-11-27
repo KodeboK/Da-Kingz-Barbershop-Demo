@@ -1,150 +1,80 @@
-import { DEFAULT_SERVICES, DEFAULT_BARBERS, quote, money } from './catalog.js';
-export function setupSeamlessBooking(dialog) {
-    if (!dialog)
-        return;
-    const root = dialog.querySelector('[data-booking-root]');
-    if (!root)
-        return;
-    const demo = document.documentElement.dataset.page === 'demo';const privacyURL=demo?(document.querySelector('base')?.getAttribute('href')||'/').replace(/es\/?$/,'')+'privacy/':'/privacy';
-    let catalog = DEFAULT_SERVICES, barbers = DEFAULT_BARBERS, step = 0, busy = false, csrf = '', attempt = null, chosenBarber = 'miguel', chosenService = 'haircut', details = {}, attemptKey = crypto.randomUUID(), providerResult = null, config={recognitionDays:90}, initialized=false;
-    const text = (en, es) => document.documentElement.lang === 'es' ? es : en, lang = () => document.documentElement.lang === 'es' ? 'es' : 'en';
-    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const current = () => quote(catalog.find(s => s.id === chosenService), barbers.find(b => b.id === chosenBarber));
-    async function api(endpoint, data) { const r = await fetch('/api/booking/' + endpoint, { method: data ? 'POST' : 'GET', headers: data ? { 'Content-Type': 'application/json', 'X-Kingz-CSRF': csrf } : {}, body: data ? JSON.stringify(data) : undefined, cache: 'no-store' }); const v = await r.json(); if (!r.ok)
-        throw Error(v.error || text('Please try again or use direct booking.', 'Inténtalo de nuevo o reserva directamente.')); return v; }
-    function fallback() { const b = barbers.find(b => b.id === chosenBarber) || DEFAULT_BARBERS[0]; return demo ? `<p class="booking-notice">${text('Demonstration only. No information is saved and no appointments are submitted.', 'Solo demostración. No se guardan datos ni se envían citas.')}</p>` : `<a class="button outline direct-booking" href="${esc(b.url)}" target="_blank" rel="noopener noreferrer">${text('Book directly with Calendly', 'Reservar directamente en Calendly')}</a><p class="booking-fineprint">${text('Direct booking works even when our secure form is unavailable.', 'La reserva directa funciona aunque nuestro formulario no esté disponible.')}</p>`; }
-    function progress() { return `<ol class="booking-progress">${[['Barber', 'Barbero'], ['Service', 'Servicio'], ['Details', 'Datos'], ['Schedule', 'Horario']].map(([en, es], i) => `<li ${i === step ? 'aria-current="step"' : ''} class="${i < step ? 'complete' : ''}">${text(en, es)}</li>`).join('')}</ol>`; }
-    function formInput(name, en, es, type, autocomplete) { return `<label>${text(en, es)}<input name="${name}" type="${type}" autocomplete="${autocomplete}" value="${esc(details[name] || '')}" required maxlength="${name === 'email' ? 254 : 80}" ${type === 'tel' ? 'inputmode="tel" placeholder="+1 845 555 0123"' : ''}></label>`; }
-    function render() { root.innerHTML = progress() + `<div role="alert" class="booking-error" data-booking-error></div>` + (step === 0 ? `<h3>${text('Choose your barber', 'Elige tu barbero')}</h3><div class="barber-options">${barbers.filter(b => b.enabled).map(b => `<button type="button" data-barber="${esc(b.id)}" aria-pressed="${b.id === chosenBarber}"><strong>${esc(b.name)}</strong><span>Da Kingz Barbershop</span></button>`).join('')}</div>` : step === 1 ? `<h3>${text('Choose your service', 'Elige tu servicio')}</h3><div class="service-options">${catalog.filter(s => s.enabled && barbers.find(b => b.id === chosenBarber)?.services?.[s.id] !== false).map(s => { const q = quote(s, barbers.find(b => b.id === chosenBarber)); return `<button type="button" data-service-choice="${esc(s.id)}" aria-pressed="${s.id === chosenService}"><span>${esc(lang() === 'es' ? s.es : s.en)}</span><strong>${money(q.cents)}</strong></button>`; }).join('')}</div>` : step === 2 ? `<div class="booking-quote"><strong>${esc(current().barberName)}</strong><span>${esc(current()[lang()])} · ${money(current().cents)}</span></div><form data-customer-form>${formInput('firstName', 'First name', 'Nombre', 'text', 'given-name')}${formInput('lastName', 'Last name', 'Apellido', 'text', 'family-name')}${formInput('email', 'Email', 'Correo electrónico', 'email', 'email')}${formInput('phone', 'Cellphone', 'Celular', 'tel', 'tel')}<label class="honeypot" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label><label class="consent"><input type="checkbox" name="privacy" required ${details.privacy ? 'checked' : ''}>${text('I agree to secure storage of these details and their transfer to Calendly to arrange this appointment.', 'Acepto el almacenamiento seguro de estos datos y su transferencia a Calendly para gestionar esta cita.')} <a href="${privacyURL}" target="_blank" rel="noopener">${text('Privacy', 'Privacidad')}</a></label><label class="consent"><input name="remember" type="checkbox" ${details.remember ? 'checked' : ''}>${text(`Remember this device for ${config.recognitionDays} days. Existing profiles require verification.`,`Recordar este dispositivo por ${config.recognitionDays} días. Los perfiles existentes requieren verificación.`)}</label><label class="consent"><input name="emailMarketing" type="checkbox" ${details.emailMarketing ? 'checked' : ''}>${text('Optional: email reminders and offers.', 'Opcional: recordatorios y ofertas por correo.')}</label><label class="consent"><input name="smsMarketing" type="checkbox" ${details.smsMarketing ? 'checked' : ''}>${text('Optional: text message reminders and offers.', 'Opcional: recordatorios y ofertas por mensaje de texto.')}</label><p class="booking-fineprint">${text('If you continue in an external Calendly page, the prefilled details appear in its URL. The embedded option transfers them using JavaScript instead.', 'Si continúas en una página externa de Calendly, los datos aparecen en su enlace. La opción integrada los transfiere mediante JavaScript.')}</p><label>${text('Booking method', 'Método de reserva')}<select name="method">${[...new Set([barbers.find(b=>b.id===chosenBarber)?.primary,barbers.find(b=>b.id===chosenBarber)?.fallback])].filter(x=>x&&x!=='api').map(method=>`<option value="${method}">${method==='prefill_embed'?text('Embedded Calendly','Calendly integrado'):method==='prefill_redirect'?text('Prefilled Calendly page','Página de Calendly con tus datos'):method==='manual'?text('Contact barber','Contactar al barbero'):text('Direct Calendly page','Página directa de Calendly')}</option>`).join('')}</select></label><div data-turnstile-host></div><button type="submit" class="button primary" ${busy ? 'disabled' : ''}>${demo ? text('Preview next step', 'Ver siguiente paso') : text('Save details and continue', 'Guardar datos y continuar')}</button></form>` : `<h3>${text('Select your date and time in Calendly', 'Elige fecha y hora en Calendly')}</h3><p>${text('Calendly controls availability and the appointment duration. Website pricing does not update Calendly automatically.', 'Calendly controla la disponibilidad y duración. Los precios del sitio no se actualizan automáticamente en Calendly.')}</p><div data-provider-area></div><p class="booking-notice">${text('A transfer is not a confirmed appointment. Finish scheduling inside Calendly.', 'La transferencia no confirma una cita. Completa la reserva dentro de Calendly.')}</p>`) + `<div class="booking-step-actions">${step > 0 ? `<button type="button" class="button outline" data-booking-back>${text('Back', 'Atrás')}</button>` : ''}${step < 2 ? `<button type="button" class="button primary" data-booking-next>${text('Continue', 'Continuar')}</button>` : ''}</div>${fallback()}`; if (step === 3 && providerResult)
-        showProvider(); if(step===2&&config.turnstile)mountChallenge(); }
-    function error(e) {const translations={'The price changed. Review the current price and continue.':'El precio cambió. Revisa el precio actual y continúa.','Pricing changed. Return to the service step to review it.':'El precio cambió. Vuelve al servicio para revisarlo.','Please reload the booking form.':'Vuelve a cargar el formulario.','Enter your name and a valid email address.':'Escribe tu nombre y un correo válido.','Use a country code for numbers outside the US.':'Incluye el código de país para números fuera de EE. UU.','This verification channel is not configured. Continue with a new booking.':'La verificación aún no está disponible. Continúa con una reserva nueva.','A site service is temporarily unavailable.':'El servicio no está disponible. Usa la reserva directa.'};root.querySelector('[data-booking-error]').textContent = lang()==='es'?(translations[e.message]||e.message):e.message; }
-    async function initialize() { if (demo) {
-        render();
-        return;
-    } try {
-        const [cfg, session, recovered] = await Promise.all([api('catalog'), api('session'), api('recover')]);
-        config=cfg;catalog = cfg.catalog;
-        barbers = cfg.barbers;
-        csrf = session.csrf || '';if(csrf)api('initiate',{language:lang(),source:new URLSearchParams(location.search).get('utm_source')||'direct'}).catch(()=>{});
-        const recognized=await api('express-details').catch(()=>({recognized:false}));if(recognized.recognized){details=recognized.details;chosenBarber=recognized.preferences.barber||chosenBarber;chosenService=recognized.preferences.service||chosenService;}
-        if (recovered.attempt) {
-            attempt = recovered.attempt.id;
-            chosenBarber = recovered.attempt.barberId;
-            chosenService = recovered.attempt.serviceId;
-            details = recovered.attempt.details;
-            step = 2;
-        }
-        if (!session.available)
-            throw Error(text('Our secure form is unavailable. Please use direct Calendly booking.', 'El formulario seguro no está disponible. Reserva directamente en Calendly.'));
-        render();
-    }
-    catch (e) {
-        render();
-        error(e);
-        root.querySelectorAll('[data-booking-next]').forEach(b => b.disabled = true);
-    } }
-    root.addEventListener('click', e => { const b = e.target.closest('button'); if (!b)
-        return; if (b.dataset.barber) {
-        chosenBarber = b.dataset.barber;const first=catalog.find(s=>s.enabled&&barbers.find(b=>b.id===chosenBarber)?.services?.[s.id]!==false);chosenService=first?.id||'';
-        attempt = null;
-        attemptKey = crypto.randomUUID();
-        render();
-    } if (b.dataset.serviceChoice) {
-        chosenService = b.dataset.serviceChoice;
-        attempt = null;
-        attemptKey = crypto.randomUUID();
-        render();
-    } if (b.hasAttribute('data-booking-next')) {
-        if(!barbers.some(b=>b.id===chosenBarber&&b.enabled)||!chosenService){error(Error(text('Choose an available barber and service.','Elige un barbero y servicio disponible.')));return}step++;
-        render();
-    } if (b.hasAttribute('data-booking-back')) {
-        if (step === 2)
-            details = readForm();
-        step--;
-        render();
-    } });
-    function readForm() { const form = root.querySelector('[data-customer-form]'); if (!form)
-        return details; const d = Object.fromEntries(new FormData(form)); for (const key of ['privacy', 'remember', 'emailMarketing', 'smsMarketing'])
-        d[key] = form.elements[key].checked; d.turnstile=d['cf-turnstile-response']||'';return d; }
-    root.addEventListener('invalid',e=>{if(lang()==='es')e.target.setCustomValidity(e.target.validity.typeMismatch?'Escribe un correo válido.':'Completa este campo para continuar.')},true);
-    root.addEventListener('input', (e) => { if(e.target.setCustomValidity)e.target.setCustomValidity(''); if (attempt) {
-        attempt = null;
-        attemptKey = crypto.randomUUID();
-    } });
-    root.addEventListener('submit', async (e) => { e.preventDefault(); if (busy || !e.target.reportValidity())
-        return; details = readForm(); busy = true; e.submitter.disabled = true; try {
-        if (demo) {
-            step = 3;
-            providerResult = null;
-            render();
-            return;
-        }
-        if (!csrf)
-            throw Error(text('Use direct booking below.', 'Usa la reserva directa.'));
-        const q = current();
-        const saved = attempt ? { id: attempt } : await api('capture', { ...details, language: lang(), barberId: chosenBarber, serviceId: chosenService, quotedCents: q.cents, attemptKey, source: new URLSearchParams(location.search).get('utm_source') || 'direct' });
-        attempt = saved.id;
-        providerResult = await api('transfer', { id: attempt, method:details.method });
-        step = 3;
-        render();
-    }
-    catch (e) {
-        error(e);
-    }
-    finally {
-        busy = false;
-        const submit = root.querySelector('[type=submit]');
-        if (submit)
-            submit.disabled = false;
-    } });
-    let switchedFallback=false;async function detectFailure(){if(!dialog.open||step!==3||switchedFallback||root.querySelector('[data-calendly-host] iframe'))return;switchedFallback=true;try{providerResult=await api('transfer',{id:attempt,fallback:true});if(providerResult.method!=='prefill_embed'){showProvider();return}}catch{}error(Error(text('Calendly could not load. Use direct booking below.','Calendly no se pudo cargar. Usa la reserva directa.')))}
-    function mountChallenge(){const mount=()=>{const host=root.querySelector('[data-turnstile-host]');if(host&&window.turnstile)window.turnstile.render(host,{sitekey:config.turnstile})};if(window.turnstile){mount();return}let script=document.querySelector('script[data-turnstile]');if(!script){script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';script.dataset.turnstile='true';document.head.append(script)}script.addEventListener('load',mount,{once:true});script.onerror=()=>error(Error(text('Use direct booking below.','Usa la reserva directa.')))}
-    function showProvider() { const area = root.querySelector('[data-provider-area]'); if (providerResult.method !== 'prefill_embed') {
-        area.innerHTML = `<a class="button primary" href="${esc(providerResult.url)}" rel="noreferrer noopener">${providerResult.method==='manual'?text('Call your barber','Llamar al barbero'):text('Continue to Calendly', 'Continuar a Calendly')}</a>`;
-        return;
-    } area.innerHTML = `<p data-embed-status>${text('Loading Calendly…', 'Cargando Calendly…')}</p><div data-calendly-host></div>`; const host = area.querySelector('[data-calendly-host]'); const mount = () => { if (!window.Calendly) {
-        detectFailure();
-        return;
-    } window.Calendly.initInlineWidget({ url: providerResult.url, parentElement: host, prefill: providerResult.prefill, utm: providerResult.tracking }); area.querySelector('[data-embed-status]')?.remove(); }; if (window.Calendly)
-        mount();
-    else {
-        let script = document.querySelector('script[data-calendly]');
-        if (!script) {
-            script = document.createElement('script');
-            script.src = 'https://assets.calendly.com/Da-Kingz-Barbershop-Demo/assets/external/widget.js';
-            script.dataset.calendly = 'true';
-            script.onload = mount;
-            script.onerror = detectFailure;
-            document.head.append(script);
-        }
-        else
-            script.addEventListener('load', mount, { once: true });
-    } setTimeout(() => { if (dialog.open && step === 3 && !host.querySelector('iframe'))
-        detectFailure(); }, providerResult.timeout * 1000); }
-    addEventListener('message', async (e) => { const frame = root.querySelector('[data-calendly-host] iframe'); if (!frame || e.source !== frame.contentWindow || e.origin !== 'https://calendly.com' || e.data?.event !== 'calendly.event_scheduled' || !attempt || demo)
-        return; try {
-        await api('client-event', { id: attempt, event: e.data.payload?.event?.uri, invitee: e.data.payload?.invitee?.uri });
-        root.querySelector('[data-booking-error]').textContent = text('Calendly reported scheduling. Confirmation is pending verification.', 'Calendly informó de la reserva. La confirmación está pendiente de verificación.');
-    }
-    catch { } });
-    new MutationObserver(() => { if (dialog.open) {
-        document.body.dataset.bookingActive = 'true';document.querySelector('[data-review-dialog][open]')?.close();
-        if (!initialized) {
-            initialized = true;
-            initialize();
-        }
-    }
-    else
-        delete document.body.dataset.bookingActive; }).observe(dialog, { attributes: true, attributeFilter: ['open'] });
-    document.addEventListener('kingz-service-booking',e=>{if(e.detail&&catalog.some(s=>s.id===e.detail)){chosenService=e.detail;attempt=null;attemptKey=crypto.randomUUID();if(initialized){step=1;render()}}});
-    document.addEventListener('kingz-language', () => { if (dialog.open) {
-        if (step === 2)
-            details = readForm();
-        render();
-    } });
-    render();
-    if(!demo){const recognize=document.createElement('button');recognize.type='button';recognize.className='text-link returning-booking';recognize.textContent=text('Returning customer? Verify this device','¿Ya eres cliente? Verifica este dispositivo');document.querySelector('#booking .wrap')?.append(recognize);recognize.addEventListener('click',async()=>{const contact=prompt(text('Email for a secure verification link:','Correo para un enlace de verificación:'));if(!contact)return;try{const s=await api('session');csrf=s.csrf;await api('recognize',{channel:'email',contact,language:lang()});recognize.textContent=text('If a profile matches, check your email.','Si hay un perfil, revisa tu correo.')}catch(e){recognize.textContent=e.message}})}
-    if (!demo)
-        api('express').then(v => { if (!v.recognized || !v.personalize)
-            return; const area = document.createElement('div'); area.className = 'express-greeting'; area.innerHTML = `<p>${text('Welcome back', 'Bienvenido de nuevo')}, ${esc(v.customer.firstName)}</p>${v.usual ? `<button class="button outline" data-usual>${text('Book my usual', 'Reservar lo de siempre')}</button>` : ''}<button type="button" class="text-link" data-forget>${text('Not you? Forget this device', '¿No eres tú? Olvidar dispositivo')}</button>`; document.querySelector('.hero-copy')?.append(area); area.querySelector('[data-usual]')?.addEventListener('click', () => { chosenBarber = v.usual.barberId; chosenService = v.usual.serviceId; step = 2; render(); document.querySelector('[data-book]')?.click(); }); area.querySelector('[data-forget]').addEventListener('click', async () => { const s = await api('session'); csrf = s.csrf; await api('forget', {}); area.remove(); }); }).catch(() => { });
+import {DEFAULT_SERVICES,DEFAULT_BARBERS,quote,money} from './catalog.js';
+import {BOOKING_NOTICE_VERSION,FALLBACK_CONTACT,prefilledBookingURL,customerDetails} from './booking-link.js';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const lang=()=>document.documentElement.lang==='es'?'es':'en';
+const text=(en,es)=>lang()==='es'?es:en;
+const cookieHeaders=()=>document.documentElement.dataset.bookingPortal==='true'?{'X-Kingz-Portal':'1'}:{};
+const cssColor=(name,fallback)=>{const value=getComputedStyle(document.documentElement).getPropertyValue(name).trim();return /^#[a-f0-9]{6}$/i.test(value)?value.slice(1):fallback};
+export function bookingNotice(language='en'){
+ return language==='es'?'Al pulsar Reservar, aceptas nuestros':'By selecting Book, you agree to our';
+}
+export function setupSeamlessBooking(dialog){
+ if(!dialog)return;const root=dialog.querySelector('[data-booking-root]');if(!root)return;
+ const remoteOrigin=document.documentElement.dataset.bookingOrigin;
+ if(remoteOrigin&&new URL(remoteOrigin).origin!==location.origin){setupRemoteCheckout(dialog,root,remoteOrigin);return}
+ let catalog=DEFAULT_SERVICES,barbers=DEFAULT_BARBERS,step=0,details={},chosenBarber='miguel',chosenService=new URLSearchParams(location.search).get('service')||'haircut',attempt=null,key=crypto.randomUUID(),csrf='',busy=false,initialized=false,ready=false,provider=null,resizeObserver;
+ let config={capture:true,recognitionDays:90,express:true,marketing:{email:false,sms:false}};
+ const barber=()=>barbers.find(b=>b.id===chosenBarber)||barbers.find(b=>b.enabled)||DEFAULT_BARBERS[0];
+ const current=()=>quote(catalog.find(s=>s.id===chosenService),barber());
+ const validChoice=()=>{if(!barber()?.enabled)return false;if(!catalog.some(s=>s.id===chosenService&&s.enabled&&barber().services?.[s.id]!==false))chosenService=catalog.find(s=>s.enabled&&barber().services?.[s.id]!==false)?.id;return !!chosenService};
+ const resetAttempt=()=>{attempt=null;key=crypto.randomUUID();provider=null};
+ async function api(endpoint,data){const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20000);try{const r=await fetch('/api/booking/'+endpoint,{method:data?'POST':'GET',headers:{...cookieHeaders(),...(data?{'Content-Type':'application/json','X-Kingz-CSRF':csrf}:{})},body:data?JSON.stringify(data):undefined,cache:'no-store',signal:controller.signal});const result=await r.json();if(!r.ok)throw Error(result.error||text('Please try again.','Inténtalo de nuevo.'));return result}finally{clearTimeout(timeout)}}
+ function progress(){return `<ol class="booking-progress" aria-label="${text('Booking progress','Progreso de reserva')}">${[['Barber','Barbero'],['Service','Servicio'],['Details','Datos'],['Time','Horario']].map(([en,es],i)=>`<li ${i===step?'aria-current="step"':''} class="${i<step?'complete':''}">${text(en,es)}</li>`).join('')}</ol>`}
+ function quoteMarkup(){let q;try{q=current()}catch{return ''}return `<div class="booking-quote"><strong>${esc(q.barberName)}</strong><span>${esc(q[lang()])} · ${money(q.cents)}</span></div>`}
+ function field(name,en,es,type,autocomplete){return `<label>${text(en,es)}<input name="${name}" type="${type}" autocomplete="${autocomplete}" value="${esc(details[name]||'')}" required maxlength="${name==='email'?254:80}" ${type==='tel'?'inputmode="tel" placeholder="+1 845 555 0123"':''}></label>`}
+ function detailsMarkup(){const optional=config.marketing?.email||config.marketing?.sms;return `${quoteMarkup()}<form data-customer-form>${field('firstName','First name','Nombre','text','given-name')}${field('lastName','Last name','Apellido','text','family-name')}${field('email','Email','Correo electrónico','email','email')}${field('phone','Cellphone','Celular','tel','tel')}<label class="honeypot" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>${optional?`<details class="booking-options"><summary>${text('Reminders and offers (optional)','Recordatorios y ofertas (opcional)')}</summary>${config.marketing.email?`<label class="consent"><input type="checkbox" name="emailMarketing" ${details.emailMarketing?'checked':''}>${text('Email reminders and offers','Recordatorios y ofertas por correo')}</label>`:''}${config.marketing.sms?`<label class="consent"><input type="checkbox" name="smsMarketing" ${details.smsMarketing?'checked':''}>${text('Text message reminders and offers','Recordatorios y ofertas por mensaje')}</label>`:''}</details>`:''}<div data-turnstile-host></div><p class="booking-terms">${bookingNotice(lang())} <a href="/terms" target="_blank" rel="noopener noreferrer">${text('Terms','Términos')}</a> ${text('and','y')} <a href="/privacy" target="_blank" rel="noopener noreferrer">${text('Privacy Policy','Política de privacidad')}</a>. ${text('We use your details to arrange your appointment.','Usamos tus datos para gestionar tu cita.')}</p><button type="submit" class="button primary booking-submit" ${busy?'disabled':''}>${busy?text('Opening your times…','Cargando horarios…'):text('Book','Reservar')}</button></form>`}
+ function render(){const content=step===0?`<h3>${text('Choose your barber','Elige tu barbero')}</h3><div class="barber-options">${barbers.filter(b=>b.enabled).map(b=>`<button type="button" data-barber="${esc(b.id)}" aria-pressed="${b.id===chosenBarber}"><strong>${esc(b.name)}</strong><span>${b.primary==='manual'?text('Book through the shop','Reserva con la barbería'):text('Choose a time online','Elige un horario en línea')}</span></button>`).join('')}</div>`:step===1?`<h3>${text('Choose your service','Elige tu servicio')}</h3><div class="service-options">${catalog.filter(s=>s.enabled&&barber().services?.[s.id]!==false).map(s=>`<button type="button" data-service-choice="${s.id}" aria-pressed="${s.id===chosenService}"><span>${esc(s[lang()])}</span><strong>${money(quote(s,barber()).cents)}</strong></button>`).join('')}</div>`:step===2?detailsMarkup():`${quoteMarkup()}<h3>${barber().primary==='manual'?text('Choose your time with the shop','Elige tu horario con la barbería'):text('Choose your date and time','Elige fecha y hora')}</h3><div data-provider-area></div>`;
+ root.innerHTML=`${progress()}<p class="booking-error" data-booking-error role="alert" hidden></p>${content}<div class="booking-step-actions">${step>0?`<button class="button outline" type="button" data-booking-back>${text('Back','Atrás')}</button>`:''}${step<2?`<button class="button primary" type="button" data-booking-next ${!ready&&initialized?'disabled':''}>${text('Continue','Continuar')}</button>`:''}</div>`;
+ if(step===2)mountChallenge();if(step===3&&provider)showProvider();announceSize();
+ }
+ function error(message){const el=root.querySelector('[data-booking-error]');if(!el)return;const dictionary={'The price changed. Review the current price and continue.':'El precio cambió. Revisa el precio actual y continúa.','Pricing changed. Return to the service step to review it.':'El precio cambió. Vuelve al servicio para revisarlo.','Enter your name and a valid email address.':'Escribe tu nombre y un correo válido.','Use a country code for numbers outside the US.':'Incluye el código de país para números fuera de EE. UU.'};el.textContent=lang()==='es'?(dictionary[message]||message):message;el.hidden=false;announceSize()}
+ function readForm(){const form=root.querySelector('[data-customer-form]');if(!form)return details;const data=Object.fromEntries(new FormData(form));return {...data,emailMarketing:form.elements.emailMarketing?.checked===true,smsMarketing:form.elements.smsMarketing?.checked===true,remember:false,turnstile:data['cf-turnstile-response']||''}}
+ async function initialize(){try{
+ const [cfg,session]=await Promise.all([api('catalog'),api('session')]);config=cfg;catalog=cfg.catalog;barbers=cfg.barbers;csrf=session.csrf||'';
+ if(document.documentElement.dataset.bookingPortal==='true'&&session.available){const probe=await api('probe');if(!probe.cookies){root.innerHTML=`<p>${text('Open booking to continue securely.','Abre la reserva para continuar de forma segura.')}</p><a class="button primary" href="/book?lang=${lang()}" target="_blank" rel="noopener noreferrer">${text('Continue booking','Continuar reserva')}</a>`;return}}
+ const [recovered,recognized]=await Promise.all([api('recover').catch(()=>({attempt:null})),api('express-details').catch(()=>({recognized:false}))]);
+ if(recognized.recognized){details=recognized.details;chosenBarber=recognized.preferences.barber||chosenBarber;chosenService=recognized.preferences.service||chosenService}
+ if(recovered.attempt){const a=recovered.attempt;details=a.details;chosenBarber=a.barberId;chosenService=a.serviceId;if(['captured','transferred','unverified'].includes(a.state)){attempt=a.id;step=2}}
+ ready=true;validChoice();render();if(csrf)api('initiate',{language:lang(),source:new URLSearchParams(location.search).get('utm_source')||'direct'}).catch(()=>{});
+ }catch{ready=true;validChoice();render();error(text('You can still book online. Our saved-details service is temporarily unavailable.','Aún puedes reservar en línea. El servicio para guardar datos no está disponible temporalmente.'))}}
+ root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||busy)return;if(b.dataset.barber){chosenBarber=b.dataset.barber;resetAttempt();validChoice();render()}else if(b.dataset.serviceChoice){chosenService=b.dataset.serviceChoice;resetAttempt();render()}else if(b.hasAttribute('data-booking-next')){if(!validChoice()){error(text('Choose an available barber and service.','Elige un barbero y servicio disponible.'));return}step++;render()}else if(b.hasAttribute('data-booking-back')){if(step===2)details=readForm();step--;render()}});
+ root.addEventListener('input',e=>{e.target.setCustomValidity?.('');if(attempt)resetAttempt()});
+ root.addEventListener('invalid',e=>{if(lang()==='es')e.target.setCustomValidity(e.target.validity.typeMismatch?'Escribe un correo válido.':'Completa este campo para continuar.')},true);
+ root.addEventListener('submit',async e=>{e.preventDefault();if(busy||!e.target.reportValidity())return;details=readForm();try{details={...details,...customerDetails({...details,language:lang()})}}catch(e){error(e.message);return}busy=true;e.submitter.disabled=true;const q=current();let captureError='';try{
+ if(!csrf||!config.capture)throw Error('capture-unavailable');
+ const saved=attempt?{id:attempt}:await api('capture',{...details,language:lang(),barberId:chosenBarber,serviceId:chosenService,quotedCents:q.cents,attemptKey:key,noticeVersion:BOOKING_NOTICE_VERSION,acceptedAction:'book',source:new URLSearchParams(location.search).get('utm_source')||'direct'});attempt=saved.id;
+ provider=await api('transfer',{id:attempt});
+ }catch(err){if(/price|Pricing|precio|service is unavailable|Choose an existing/.test(err.message)){busy=false;render();error(err.message);return}captureError=text('Your details could not be saved here. You can still complete your booking.','No se pudieron guardar tus datos aquí. Aún puedes completar tu reserva.');provider=barber().primary==='manual'?{method:'manual',url:barber().contact||FALLBACK_CONTACT,captured:false}:{method:'prefill_embed',url:prefilledBookingURL(barber(),details,q.providerLabel?.[lang()]||q[lang()],attempt||'',lang()),prefill:{firstName:details.firstName,lastName:details.lastName,email:details.email,customAnswers:{a1:q[lang()],a2:details.phone}},timeout:20}}
+ busy=false;step=3;render();if(captureError)error(captureError);
+ });
+ function mountChallenge(){if(!config.turnstile)return;const mount=()=>{const host=root.querySelector('[data-turnstile-host]');if(host&&window.turnstile)window.turnstile.render(host,{sitekey:config.turnstile})};if(window.turnstile){mount();return}let script=document.querySelector('script[data-turnstile]');if(!script){script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';script.dataset.turnstile='true';document.head.append(script)}script.addEventListener('load',mount,{once:true})}
+ function showProvider(){const area=root.querySelector('[data-provider-area]');if(!area)return;
+ if(provider.method==='manual'){area.innerHTML=`<p>${attempt?text('Your details have been saved.','Tus datos se guardaron.'):''} ${text(`Call the shop to arrange a time with ${barber().name}.`,`Llama a la barbería para elegir un horario con ${barber().name}.`)}</p><a class="button primary" href="${esc(provider.url||FALLBACK_CONTACT)}">${text('Call to book','Llamar para reservar')}</a>`;return}
+ const url=new URL(provider.url);if(url.origin!=='https://calendly.com'){error(text('Online booking is unavailable. Please call the shop.','La reserva en línea no está disponible. Llama a la barbería.'));return}
+ url.searchParams.delete('month');url.searchParams.set('hide_event_type_details','1');url.searchParams.set('hide_gdpr_banner','1');url.searchParams.set('locale',lang());url.searchParams.set('background_color',cssColor('--paper','171417'));url.searchParams.set('text_color',cssColor('--ink','f8f4ef'));url.searchParams.set('primary_color',cssColor('--accent','b74359'));
+ area.innerHTML=`<p class="booking-loading" data-scheduler-loading role="status">${text('Finding your next appointment…','Buscando tu próxima cita…')}</p><div class="booking-calendar" data-calendly-host></div><div data-scheduler-recovery hidden><p>${text('Having trouble loading your times?','¿No cargan los horarios?')}</p><a class="button outline" href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">${text('Open booking','Abrir reserva')}</a></div>`;
+ const host=area.querySelector('[data-calendly-host]');const reveal=()=>{area.querySelector('[data-scheduler-loading]')?.remove();announceSize()};let mounted=false;
+ const direct=()=>{if(mounted||!host.isConnected)return;mounted=true;const frame=document.createElement('iframe');const u=new URL(url);u.searchParams.set('embed_domain',location.hostname);u.searchParams.set('embed_type','Inline');frame.src=u.href;frame.title=text('Choose an appointment time','Elige un horario para tu cita');frame.referrerPolicy='no-referrer';frame.onload=reveal;host.append(frame);area.querySelector('[data-scheduler-recovery]').hidden=false;announceSize()};
+ const mount=()=>{if(mounted||!host.isConnected)return;if(!window.Calendly){direct();return}mounted=true;window.Calendly.initInlineWidget({url:url.href,parentElement:host,prefill:provider.prefill||{},utm:provider.tracking||{},resize:true});const frame=host.querySelector('iframe');if(frame){frame.title=text('Choose an appointment time','Elige un horario para tu cita');frame.referrerPolicy='no-referrer';frame.addEventListener('load',reveal,{once:true})}announceSize()};
+ if(window.Calendly)mount();else{let script=document.querySelector('script[data-calendly]');if(!script){script=document.createElement('script');script.src='https://assets.calendly.com/Da-Kingz-Barbershop-Demo/assets/external/widget.js';script.dataset.calendly='true';document.head.append(script)}script.addEventListener('load',mount,{once:true});script.addEventListener('error',direct,{once:true});setTimeout(direct,Math.max(5,provider.timeout||20)*1000)}
+ setTimeout(()=>{if(host.isConnected&&area.querySelector('[data-scheduler-loading]')){area.querySelector('[data-scheduler-recovery]').hidden=false;announceSize()}},20000);
+ }
+ addEventListener('message',async e=>{const frame=root.querySelector('[data-calendly-host] iframe');if(!frame||e.source!==frame.contentWindow||e.origin!=='https://calendly.com')return;
+ if(e.data?.event==='calendly.event_scheduled'&&attempt){try{await api('client-event',{id:attempt,event:e.data.payload?.event?.uri,invitee:e.data.payload?.invitee?.uri})}catch{}}
+ if(e.data?.event==='calendly.page_height'&&Number.isFinite(Number(e.data.payload?.height))){frame.style.height=Math.min(1500,Math.max(650,Number(e.data.payload.height)))+'px';announceSize()}
+ });
+ function open(){document.body.dataset.bookingActive='true';document.querySelector('#review-invite[open]')?.close();if(!initialized){initialized=true;render();initialize()}}
+ new MutationObserver(()=>{if(dialog.open)open();else delete document.body.dataset.bookingActive}).observe(dialog,{attributes:true,attributeFilter:['open']});
+ document.addEventListener('kingz-service-booking',e=>{if(e.detail&&catalog.some(s=>s.id===e.detail)){chosenService=e.detail;resetAttempt();if(initialized){step=1;render()}}});
+ document.addEventListener('kingz-language',()=>{if(!dialog.open)return;if(step===2)details=readForm();render()});
+ function announceSize(){if(window.parent===window)return;const parents=['https://kodebok.github.io',location.origin];for(const origin of parents)window.parent.postMessage({type:'kingz.booking.resize',height:Math.ceil(dialog.getBoundingClientRect().height)},origin)}
+ render();if(dialog.open)open();resizeObserver=new ResizeObserver(announceSize);resizeObserver.observe(root);
+ api('express').then(v=>{if(!v.recognized||!v.personalize)return;const area=document.createElement('div');area.className='express-greeting';area.innerHTML=`<p>${text('Welcome back','Bienvenido de nuevo')}, ${esc(v.customer.firstName)}</p>${v.usual?`<button class="button outline" data-usual>${text('Book my usual','Reservar lo de siempre')}</button>`:''}<button class="text-link" data-forget>${text('Forget this device','Olvidar este dispositivo')}</button>`;document.querySelector('.hero-copy')?.append(area);area.querySelector('[data-usual]')?.addEventListener('click',()=>{chosenBarber=v.usual.barberId;chosenService=v.usual.serviceId;step=2;render();document.querySelector('[data-book]')?.click()});area.querySelector('[data-forget]').addEventListener('click',async()=>{const s=await api('session');csrf=s.csrf;await api('forget',{});area.remove()})}).catch(()=>{});
+}
+function setupRemoteCheckout(dialog,root,origin){
+ const expected=new URL(origin).origin;if(expected!=='https://da-kingz-barbershop.bk441012.chatgpt.site')return;let frame=null,service=null;
+ function mount(){document.body.dataset.bookingActive='true';document.querySelector('#review-invite[open]')?.close();if(frame)return;const url=new URL('/book',expected);url.searchParams.set('embedded','1');url.searchParams.set('lang',lang());url.searchParams.set('theme',document.documentElement.dataset.theme||'dark');if(service)url.searchParams.set('service',service);frame=document.createElement('iframe');frame.className='booking-portal';frame.title=text('Book an appointment','Reservar cita');frame.src=url.href;frame.referrerPolicy='no-referrer';root.replaceChildren(frame)}
+ new MutationObserver(()=>{if(dialog.open)mount();else delete document.body.dataset.bookingActive}).observe(dialog,{attributes:true,attributeFilter:['open']});
+ addEventListener('message',e=>{if(e.origin!==expected||e.source!==frame?.contentWindow||e.data?.type!=='kingz.booking.resize')return;const height=Number(e.data.height);if(Number.isFinite(height)&&height>0)frame.style.height=Math.min(1800,Math.max(350,height+24))+'px'});
+ document.addEventListener('kingz-service-booking',e=>{service=e.detail||null});document.addEventListener('kingz-language',()=>{if(frame){frame.remove();frame=null}if(dialog.open)mount()});if(dialog.open)mount();
 }

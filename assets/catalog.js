@@ -10,7 +10,7 @@ export const DEFAULT_SERVICES = [
  ['eyebrows','Eyebrows','Cejas',500,'brow'],
  ['shape-up-beard','Shape-Up + Beard','Perfilado de cabello y barba',2000,'razor'],
 ].map(([id,en,es,cents,icon])=>({id,en,es,cents,icon,descriptionEn:'',descriptionEs:'',enabled:true,providerMap:{},promotion:null}));
-export const DEFAULT_BARBERS=[{id:'miguel',name:'Miguel S. Barber',enabled:true,provider:'calendly',url:'https://calendly.com/miguel_barber/haircut',duration:35,primary:'prefill_redirect',fallback:'prefill_embed',timeout:20,services:{},prices:{},mappings:{first_name:'firstName',last_name:'lastName',email:'email',a1:'serviceLabel',a2:'phone'},apiAuthorized:false,contact:''}];
+export const DEFAULT_BARBERS=[{id:'miguel',name:'Miguel S. Barber',enabled:true,provider:'calendly',url:'https://calendly.com/miguel_barber/haircut',duration:35,primary:'prefill_embed',fallback:'prefill_redirect',timeout:20,services:{},prices:{},mappings:{first_name:'firstName',last_name:'lastName',email:'email',a1:'serviceLabel',a2:'phone'},apiAuthorized:false,contact:''},...['2','3'].map(n=>({id:'barber-'+n,name:'Barber '+n,enabled:true,provider:'manual',url:'',duration:35,primary:'manual',fallback:'manual',timeout:20,services:{},prices:{},mappings:{},apiAuthorized:false,contact:'tel:+18454805578'}))];
 export const METHODS=['prefill_redirect','prefill_embed','direct','manual','api'];
 export const money=cents=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(cents/100);
 export function quote(service,barber,at=Date.now()){
